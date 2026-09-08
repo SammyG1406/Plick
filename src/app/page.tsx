@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 
@@ -6,14 +6,17 @@ const STEPS = [
   {
     title: "Connect what you already have",
     body: "Upload PDFs, Word docs and markdown, or pull pages straight from Notion and Google Docs. Nothing needs reformatting first.",
+    numeral: "bg-mint text-mint-ink",
   },
   {
     title: "Plick reads the structure",
     body: "It works out which week, lecture or topic each section belongs to — even when the labels are inconsistent or missing — and names the concepts being taught.",
+    numeral: "bg-lavender text-lavender-ink",
   },
   {
     title: "Study by meaning, not filename",
     body: "Ask for week 6, or for Bayes' theorem, and get the passages that actually cover it. Then turn them into a summary, flashcards or a quiz.",
+    numeral: "bg-peach text-peach-ink",
   },
 ];
 
@@ -46,7 +49,7 @@ export default async function LandingPage() {
         <div className="mt-9 flex flex-wrap items-center gap-3">
           <Link
             href="/login"
-            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-contrast transition hover:opacity-90"
+            className="rounded-full bg-accent-fill px-6 py-3 text-sm font-semibold text-accent-on-fill transition hover:opacity-90"
           >
             Try it with sample notes
           </Link>
@@ -56,7 +59,11 @@ export default async function LandingPage() {
         <div className="mt-20 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3">
           {STEPS.map((step, i) => (
             <div key={step.title} className="bg-surface p-6">
-              <span className="font-mono text-xs text-muted">0{i + 1}</span>
+              <span
+                className={`inline-flex size-7 items-center justify-center rounded-full font-mono text-xs font-medium ${step.numeral}`}
+              >
+                {i + 1}
+              </span>
               <h2 className="mt-3 font-semibold">{step.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
             </div>

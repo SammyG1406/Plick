@@ -28,6 +28,9 @@ export function Panel({
   );
 }
 
+/** Each tone is a pastel background with an ink chosen to stay legible on it. */
+export type Tone = "neutral" | "accent" | "warning" | "lavender" | "mint" | "peach" | "sky" | "rose";
+
 export function Pill({
   children,
   tone = "neutral",
@@ -36,15 +39,20 @@ export function Pill({
   title,
 }: {
   children: ReactNode;
-  tone?: "neutral" | "accent" | "warning";
+  tone?: Tone;
   onClick?: () => void;
   active?: boolean;
   title?: string;
 }) {
-  const tones = {
+  const tones: Record<Tone, string> = {
     neutral: "border-line bg-surface-2 text-muted",
     accent: "border-transparent bg-accent-soft text-accent",
     warning: "border-transparent bg-warning-soft text-warning",
+    lavender: "border-transparent bg-lavender text-lavender-ink",
+    mint: "border-transparent bg-mint text-mint-ink",
+    peach: "border-transparent bg-peach text-peach-ink",
+    sky: "border-transparent bg-sky text-sky-ink",
+    rose: "border-transparent bg-rose text-rose-ink",
   };
   const className = `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
     active ? "border-accent bg-accent-soft text-accent" : tones[tone]
@@ -70,14 +78,15 @@ export function Pill({
   );
 }
 
-const KIND_LABEL: Record<SourceKind, string> = {
-  upload: "Upload",
-  notion: "Notion",
-  gdocs: "Google Docs",
+/** A colour per source, so you can tell where a passage came from at a glance. */
+const KINDS: Record<SourceKind, { label: string; tone: Tone }> = {
+  upload: { label: "Upload", tone: "sky" },
+  notion: { label: "Notion", tone: "mint" },
+  gdocs: { label: "Google Docs", tone: "rose" },
 };
 
 export function SourceBadge({ kind }: { kind: SourceKind }) {
-  return <Pill>{KIND_LABEL[kind]}</Pill>;
+  return <Pill tone={KINDS[kind].tone}>{KINDS[kind].label}</Pill>;
 }
 
 /**
@@ -93,7 +102,7 @@ export function WeekBadge({ week }: { week: WeekTag }) {
   }[week.confidence];
 
   return (
-    <Pill tone={week.number === null ? "warning" : "accent"} title={explanation}>
+    <Pill tone={week.number === null ? "peach" : "lavender"} title={explanation}>
       {week.label}
       {week.confidence !== "explicit" && <span aria-hidden>·</span>}
       {week.confidence !== "explicit" && (

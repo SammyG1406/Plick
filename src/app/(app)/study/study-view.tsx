@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -68,7 +68,7 @@ export function StudyView() {
         action={
           <Link
             href="/library"
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast"
+            className="rounded-full bg-accent-fill px-5 py-2.5 text-sm font-semibold text-accent-on-fill"
           >
             Go to library
           </Link>
@@ -169,7 +169,7 @@ export function StudyView() {
           <button
             onClick={() => void generate()}
             disabled={loading}
-            className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast transition hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-accent-fill px-5 py-2.5 text-sm font-semibold text-accent-on-fill transition hover:opacity-90 disabled:opacity-50"
           >
             {loading ? "Generating…" : `Generate ${mode}`}
           </button>

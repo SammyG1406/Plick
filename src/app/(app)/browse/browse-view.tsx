@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -117,7 +117,7 @@ export function BrowseView() {
         action={
           <Link
             href="/library"
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast"
+            className="rounded-full bg-accent-fill px-5 py-2.5 text-sm font-semibold text-accent-on-fill"
           >
             Go to library
           </Link>
@@ -150,7 +150,7 @@ export function BrowseView() {
         />
         <button
           type="submit"
-          className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast transition hover:opacity-90"
+          className="rounded-lg bg-accent-fill px-5 py-2.5 text-sm font-semibold text-accent-on-fill transition hover:opacity-90"
         >
           Search
         </button>

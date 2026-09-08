@@ -1,38 +1,79 @@
 @import "tailwindcss";
 
 /*
- * Semantic tokens only — components never reference a raw colour. Both themes
- * define every token, so nothing inherits a value from the other mode.
+ * Pastel palette. Semantic tokens only — components never reference a raw
+ * colour, and both themes define every token so nothing inherits across modes.
+ *
+ * Pastels are light by definition, which makes contrast the thing to watch. So
+ * accent is split in two: `accent` is an ink dark enough to read as text on the
+ * page, while `accent-fill` is the pastel surface a button sits on, paired with
+ * its own `accent-on-fill` ink. Every tint below follows the same rule — a soft
+ * background with a matched foreground that stays legible on it.
  */
 :root {
-  --background: #fbfaf8;
+  --background: #fdfbff;
   --surface: #ffffff;
-  --surface-2: #f4f2ee;
-  --foreground: #1c1a17;
-  --muted: #6d6862;
-  --line: #e5e1da;
-  --accent: #4f46e5;
-  --accent-soft: #eef2ff;
-  --accent-contrast: #ffffff;
-  --positive: #15803d;
-  --warning: #b45309;
-  --warning-soft: #fef6e7;
+  --surface-2: #f6f2fc;
+  --foreground: #322c46;
+  --muted: #786f92;
+  --line: #e8e0f5;
+
+  --accent: #6b57c4;
+  --accent-fill: #cdbdfa;
+  --accent-on-fill: #3b2e82;
+  --accent-soft: #efe9ff;
+
+  --positive: #26714f;
+  --warning: #8c5227;
+  --warning-soft: #ffeede;
+
+  /*
+   * Pill text is 12px, so WCAG's large-text allowance never applies to it and
+   * every ink below is tuned to clear 4.5:1 on its own tint. Lightening any of
+   * these inks to "look more pastel" breaks that — the tints carry the pastel
+   * character, the inks carry legibility.
+   */
+  --tint-lavender: #ece5ff;
+  --tint-lavender-ink: #6b57c4;
+  --tint-mint: #d8f3e5;
+  --tint-mint-ink: #26714f;
+  --tint-peach: #ffe6d3;
+  --tint-peach-ink: #985832;
+  --tint-sky: #dceeff;
+  --tint-sky-ink: #2e6690;
+  --tint-rose: #ffe0ea;
+  --tint-rose-ink: #a4436c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #14130f;
-    --surface: #1c1b17;
-    --surface-2: #24231e;
-    --foreground: #eeece7;
-    --muted: #9c968c;
-    --line: #34322b;
-    --accent: #a5a0ff;
-    --accent-soft: #262445;
-    --accent-contrast: #16142b;
-    --positive: #6ee7a8;
-    --warning: #f0b45e;
-    --warning-soft: #33291a;
+    --background: #17141f;
+    --surface: #1f1b2b;
+    --surface-2: #282338;
+    --foreground: #ebe6f7;
+    --muted: #a49cbd;
+    --line: #37304c;
+
+    --accent: #c3b2fb;
+    /* Inverted on dark: the fill deepens so pastel ink can sit on top of it. */
+    --accent-fill: #6d5bb8;
+    --accent-on-fill: #f5f1ff;
+    --accent-soft: #302a47;
+
+    --positive: #8fe3bd;
+    --warning: #f0bd85;
+    --warning-soft: #362a1d;
+
+    --tint-lavender: #302a47;
+    --tint-lavender-ink: #c3b2fb;
+    --tint-mint: #1d3830;
+    --tint-mint-ink: #8fe3bd;
+    --tint-peach: #3a2c1e;
+    --tint-peach-ink: #f0bd85;
+    --tint-sky: #1d3145;
+    --tint-sky-ink: #9ac8ee;
+    --tint-rose: #3b2331;
+    --tint-rose-ink: #f0a5c2;
   }
 }
 
@@ -43,12 +84,27 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-line: var(--line);
+
   --color-accent: var(--accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-accent-on-fill: var(--accent-on-fill);
   --color-accent-soft: var(--accent-soft);
-  --color-accent-contrast: var(--accent-contrast);
+
   --color-positive: var(--positive);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+
+  --color-lavender: var(--tint-lavender);
+  --color-lavender-ink: var(--tint-lavender-ink);
+  --color-mint: var(--tint-mint);
+  --color-mint-ink: var(--tint-mint-ink);
+  --color-peach: var(--tint-peach);
+  --color-peach-ink: var(--tint-peach-ink);
+  --color-sky: var(--tint-sky);
+  --color-sky-ink: var(--tint-sky-ink);
+  --color-rose: var(--tint-rose);
+  --color-rose-ink: var(--tint-rose-ink);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
