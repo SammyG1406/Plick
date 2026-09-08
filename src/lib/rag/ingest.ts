@@ -106,7 +106,7 @@ export async function rebuildConceptIndex(ownerId: string): Promise<ConceptRecor
     name: string;
     chunkIds: string[];
     documentIds: Set<string>;
-    weekNumbers: Set<number>;
+    weekLabels: Set<string>;
     contexts: string[];
   }
 
@@ -119,12 +119,12 @@ export async function rebuildConceptIndex(ownerId: string): Promise<ConceptRecor
         name: concept,
         chunkIds: [],
         documentIds: new Set<string>(),
-        weekNumbers: new Set<number>(),
+        weekLabels: new Set<string>(),
         contexts: [],
       };
       entry.chunkIds.push(chunk.id);
       entry.documentIds.add(chunk.documentId);
-      if (chunk.week.number !== null) entry.weekNumbers.add(chunk.week.number);
+      entry.weekLabels.add(chunk.week.label);
       if (entry.contexts.length < 3) {
         entry.contexts.push(`${titles.get(chunk.documentId) ?? ""}: ${chunk.headings.at(-1) ?? ""}`);
       }
@@ -154,7 +154,7 @@ export async function rebuildConceptIndex(ownerId: string): Promise<ConceptRecor
     embedding: vectors[i],
     chunkIds: entry.chunkIds,
     documentIds: [...entry.documentIds],
-    weekNumbers: [...entry.weekNumbers].sort((a, b) => a - b),
+    weekLabels: [...entry.weekLabels].sort(),
   }));
 
   await replaceConcepts(ownerId, records);
@@ -186,7 +186,9 @@ export async function buildTaxonomy(ownerId: string) {
   >();
 
   for (const chunk of chunks) {
-    const key = chunk.week.number === null ? "unplaced" : String(chunk.week.number);
+    // Keyed by label, not number: "Week 3" and "Lecture 3" come from different
+    // subjects and must not collapse into one facet.
+    const key = chunk.week.label;
     const entry = weekMap.get(key) ?? {
       label: chunk.week.label,
       number: chunk.week.number,
@@ -201,7 +203,21 @@ export async function buildTaxonomy(ownerId: string) {
   }
 
   const weeks = [...weekMap.values()]
-    .sort((a, b) => compareWeeks({ ...a, confidence: "explicit" }, { ...b, confidence: "explicit" }))
+    .sort((a, b) => {
+      // Group schemes together ("Week 1..6", then "Lecture 1..8"), each ordered
+      // by number, with unplaced material last.
+      const schemeA = a.label.split(" ")[0];
+      const schemeB = b.label.split(" ")[0];
+      if (schemeA !== schemeB) {
+        if (a.number === null) return 1;
+        if (b.number === null) return -1;
+        return schemeA.localeCompare(schemeB);
+      }
+      return compareWeeks(
+        { ...a, confidence: "explicit" },
+        { ...b, confidence: "explicit" },
+      );
+    })
     .map((w) => ({
       label: w.label,
       number: w.number,
@@ -217,9 +233,9 @@ export async function buildTaxonomy(ownerId: string) {
         name: c.name,
         chunkCount: c.chunkIds.length,
         documentCount: c.documentIds.length,
-        weekNumbers: c.weekNumbers,
+        weekLabels: c.weekLabels,
       }))
-      .sort((a, b) => b.chunkCount - a.chunkCount),
+      .sort((a, b) => b.chunkCount - a.chunkCount || a.name.localeCompare(b.name)),
     documentCount: documents.length,
     chunkCount: chunks.length,
   };

@@ -39,27 +39,36 @@ function toBlocks(source: string): Block[] {
     offset += line.length + 1;
 
     const md = /^(#{1,6})\s+(.*\S)\s*$/.exec(line);
-    // A short, title-cased line with no terminal punctuation is a heading in
-    // practice — PDFs and Word exports rarely survive with markdown intact.
-    const bare =
-      !md &&
-      line.trim().length > 0 &&
-      line.trim().length <= 80 &&
-      !/[.,;:]$/.test(line.trim()) &&
-      /^[A-Z0-9]/.test(line.trim()) &&
-      line.trim().split(/\s+/).length <= 10 &&
-      buffer.length === 0;
-
     if (md) {
       flush();
       blocks.push({ text: md[2], level: md[1].length, offset: lineOffset });
       continue;
     }
-    if (bare && /^(week|wk|w\d|lecture|lec|topic|module|unit|session|tutorial|lab|chapter)\b/i.test(line.trim())) {
+
+    // PDFs, Word exports and Google Docs plain text rarely keep their markdown,
+    // so headings have to be recognised by shape: a short line that starts a
+    // block, opens with a capital, and carries no terminal punctuation. The
+    // 60-character ceiling is what separates a heading from the first line of a
+    // wrapped paragraph, which runs to the full column width.
+    const trimmed = line.trim();
+    const bare =
+      buffer.length === 0 &&
+      trimmed.length > 0 &&
+      trimmed.length <= 60 &&
+      trimmed.split(/\s+/).length <= 9 &&
+      /^[A-Z0-9]/.test(trimmed) &&
+      !/[.,;:!?]$/.test(trimmed);
+
+    if (bare) {
       flush();
-      blocks.push({ text: line.trim(), level: 2, offset: lineOffset });
+      // Unit markers outrank topic headings, so they open a shallower level and
+      // the heading trail reads "Lecture 2 › Bayes' theorem".
+      const isUnit =
+        /^(week|wk|w\d|lecture|lec|topic|module|unit|session|tutorial|lab|chapter)\b/i.test(trimmed);
+      blocks.push({ text: trimmed.replace(/:$/, ""), level: isUnit ? 2 : 3, offset: lineOffset });
       continue;
     }
+
     if (line.trim() === "") {
       flush();
       continue;

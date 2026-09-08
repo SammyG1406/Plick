@@ -1,69 +1,79 @@
-import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/auth";
 
-export default function Home() {
+const STEPS = [
+  {
+    title: "Connect what you already have",
+    body: "Upload PDFs, Word docs and markdown, or pull pages straight from Notion and Google Docs. Nothing needs reformatting first.",
+  },
+  {
+    title: "Plick reads the structure",
+    body: "It works out which week, lecture or topic each section belongs to — even when the labels are inconsistent or missing — and names the concepts being taught.",
+  },
+  {
+    title: "Study by meaning, not filename",
+    body: "Ask for week 6, or for Bayes' theorem, and get the passages that actually cover it. Then turn them into a summary, flashcards or a quiz.",
+  },
+];
+
+export default async function LandingPage() {
+  // Signed-in visitors have no use for the pitch.
+  if (await getUser()) redirect("/library");
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="flex-1">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
+        <span className="text-lg font-semibold tracking-tight">Plick</span>
+        <Link
+          href="/login"
+          className="rounded-full border border-line px-4 py-1.5 text-sm font-medium transition hover:bg-surface-2"
+        >
+          Sign in
+        </Link>
+      </header>
+
+      <section className="mx-auto w-full max-w-5xl px-6 pt-10 pb-20 sm:pt-20">
+        <p className="text-sm font-medium text-accent">Retrieval for course notes</p>
+        <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.1] tracking-tight sm:text-6xl">
+          Your notes, organised by what they teach.
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
+          Plick ingests your documents, recognises the week and the concepts behind every
+          section, and retrieves passages semantically — so you can revise a topic without
+          remembering which file it landed in.
+        </p>
+        <div className="mt-9 flex flex-wrap items-center gap-3">
+          <Link
+            href="/login"
+            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-contrast transition hover:opacity-90"
+          >
+            Try it with sample notes
+          </Link>
+          <span className="text-sm text-muted">Mock sign-in — any email works.</span>
+        </div>
+
+        <div className="mt-20 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <div key={step.title} className="bg-surface p-6">
+              <span className="font-mono text-xs text-muted">0{i + 1}</span>
+              <h2 className="mt-3 font-semibold">{step.title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-16 rounded-2xl border border-line bg-surface-2 p-6 sm:p-8">
+          <h2 className="font-semibold">How the retrieval works</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+            Every query runs through three channels at once. Dense vectors catch paraphrase,
+            BM25 catches exact terminology that embeddings blur, and a concept index matches
+            on topic even when the wording shares nothing with the source. The three are
+            normalised and fused, and each result shows its component scores so you can see
+            why it surfaced.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }

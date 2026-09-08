@@ -114,63 +114,54 @@ async function enrichWithClaude(
 }
 
 /**
- * TF-IDF fallback. Scores each chunk's terms against the rest of the document
- * so boilerplate ("assignment", "reading") sinks and topic words rise, then
- * rebuilds multi-word phrases around the winners.
+ * Fallback for when no model is available.
+ *
+ * The section heading is the highest-signal thing on offer — it is a concept
+ * label a human already wrote — so it leads. Beyond that we only accept
+ * *recurring bigrams*: two content words that sit together and appear more than
+ * once in the document. Requiring recurrence is what separates real terminology
+ * ("central limit theorem", "confidence intervals") from one-off phrasing, and
+ * it is why this produces a handful of usable tags instead of a wall of noise.
  */
 function enrichHeuristically(chunks: DraftChunk[]): Map<number, string[]> {
-  const tokenised = chunks.map((c) => tokenise(c.text));
-  const df = new Map<string, number>();
-  for (const terms of tokenised) {
-    for (const term of new Set(terms)) df.set(term, (df.get(term) ?? 0) + 1);
-  }
-  const total = chunks.length || 1;
+  const documentBigrams = new Map<string, number>();
+  const chunkBigrams = chunks.map((chunk) => {
+    const terms = tokenise(chunk.text);
+    const local = new Map<string, number>();
+    for (let i = 0; i + 1 < terms.length; i++) {
+      // Both halves must be substantial; "the cost" and "of n" are not concepts.
+      if (terms[i].length < 4 || terms[i + 1].length < 4) continue;
+      const bigram = `${terms[i]} ${terms[i + 1]}`;
+      local.set(bigram, (local.get(bigram) ?? 0) + 1);
+      documentBigrams.set(bigram, (documentBigrams.get(bigram) ?? 0) + 1);
+    }
+    return local;
+  });
 
   return new Map(
     chunks.map((chunk, i) => {
-      const counts = new Map<string, number>();
-      for (const term of tokenised[i]) counts.set(term, (counts.get(term) ?? 0) + 1);
+      const concepts: string[] = [];
 
-      const ranked = [...counts.entries()]
-        .map(([term, tf]) => {
-          const idf = Math.log(total / (df.get(term) ?? 1)) + 1;
-          return { term, score: (1 + Math.log(tf)) * idf };
-        })
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 8)
-        .map((r) => r.term);
-
-      // Headings are hand-written concept labels when they exist — trust them first.
-      const fromHeading = chunk.headings
+      const heading = chunk.headings
         .at(-1)
-        ?.replace(/^(week|lecture|topic|module|unit|session)\s*\d+\s*[-–—:.]?\s*/i, "")
+        ?.replace(/^(week|wk|lecture|lec|topic|module|unit|session|tutorial|lab|chapter)\s*\d+\s*[-–—:.]?\s*/i, "")
         .trim();
+      if (heading && heading.length > 3 && heading.split(/\s+/).length <= 7) {
+        concepts.push(titleCase(heading));
+      }
 
-      const phrases = new Set<string>();
-      if (fromHeading && fromHeading.length > 3 && fromHeading.split(/\s+/).length <= 6) {
-        phrases.add(titleCase(fromHeading));
-      }
-      for (const term of ranked) {
-        const phrase = expandPhrase(chunk.text, term);
-        if (phrase) phrases.add(phrase);
-        if (phrases.size >= 4) break;
-      }
-      return [chunk.ordinal, [...phrases].slice(0, 4)];
+      const covered = concepts.join(" ").toLowerCase();
+      const recurring = [...chunkBigrams[i].entries()]
+        .filter(([bigram]) => (documentBigrams.get(bigram) ?? 0) >= 2)
+        .filter(([bigram]) => !covered.includes(bigram.split(" ")[0]))
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, concepts.length ? 1 : 2)
+        .map(([bigram]) => titleCase(bigram));
+
+      concepts.push(...recurring);
+      return [chunk.ordinal, concepts];
     }),
   );
-}
-
-/** Grows a single high-TF-IDF token back into the noun phrase it appeared in. */
-function expandPhrase(text: string, term: string): string | null {
-  const re = new RegExp(`\\b([a-z]+\\s+){0,2}${term}\\b(\\s+[a-z]+){0,1}`, "i");
-  const match = re.exec(text);
-  if (!match) return titleCase(term);
-  const words = match[0]
-    .trim()
-    .split(/\s+/)
-    .filter((w, i, arr) => !(STOPWORDS.has(w.toLowerCase()) && (i === 0 || i === arr.length - 1)));
-  if (words.length === 0) return titleCase(term);
-  return titleCase(words.join(" "));
 }
 
 function titleCase(value: string): string {

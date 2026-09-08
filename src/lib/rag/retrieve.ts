@@ -38,8 +38,18 @@ export function parseQueryIntent(query: string): QueryIntent {
   return { weekNumbers, cleaned: cleaned.length >= 3 ? cleaned : query };
 }
 
+/** Human-readable form of whichever week filter actually applied. */
+function describeWeekFilter(filters: RetrievalFilters): string[] {
+  if (filters.weeks?.length) return filters.weeks;
+  return (filters.weekNumbers ?? []).map((n) => `unit ${n}`);
+}
+
 function passesFilters(chunk: Chunk, filters: RetrievalFilters): boolean {
-  if (filters.weekNumbers?.length) {
+  // Exact label wins when the UI supplied one; the numeric form is the looser
+  // fallback used for units named in free text.
+  if (filters.weeks?.length) {
+    if (!filters.weeks.includes(chunk.week.label)) return false;
+  } else if (filters.weekNumbers?.length) {
     if (chunk.week.number === null || !filters.weekNumbers.includes(chunk.week.number)) {
       return false;
     }
@@ -57,8 +67,8 @@ function passesFilters(chunk: Chunk, filters: RetrievalFilters): boolean {
 
 export interface RetrievalResult {
   results: RetrievedChunk[];
-  /** Weeks the query itself named, so the UI can show the filter it applied. */
-  appliedWeeks: number[];
+  /** Units the query itself named, so the UI can show the filter it applied. */
+  appliedWeeks: string[];
   /** Concepts whose vectors matched the query, regardless of chunk text. */
   matchedConcepts: string[];
   provider: { id: string; model: string; semantic: boolean };
@@ -88,11 +98,13 @@ export async function retrieve(
   const intent = parseQueryIntent(query);
   const effectiveFilters: RetrievalFilters = {
     ...filters,
-    weekNumbers: filters.weekNumbers?.length
-      ? filters.weekNumbers
-      : intent.weekNumbers.length
-        ? intent.weekNumbers
-        : undefined,
+    // A unit named in the query only applies when the UI hasn't already pinned one.
+    weekNumbers:
+      filters.weeks?.length || filters.weekNumbers?.length
+        ? filters.weekNumbers
+        : intent.weekNumbers.length
+          ? intent.weekNumbers
+          : undefined,
   };
 
   const byId = new Map(documents.map((d) => [d.id, d]));
@@ -108,7 +120,7 @@ export async function retrieve(
   if (candidates.length === 0) {
     return {
       results: [],
-      appliedWeeks: effectiveFilters.weekNumbers ?? [],
+      appliedWeeks: describeWeekFilter(effectiveFilters),
       matchedConcepts: [],
       provider: providerMeta,
       staleIndex: false,
@@ -195,7 +207,7 @@ export async function retrieve(
 
   return {
     results: diversified,
-    appliedWeeks: effectiveFilters.weekNumbers ?? [],
+    appliedWeeks: describeWeekFilter(effectiveFilters),
     matchedConcepts,
     provider: providerMeta,
     staleIndex,

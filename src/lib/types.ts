@@ -70,10 +70,21 @@ export interface ConceptRecord {
   embedding: number[];
   chunkIds: string[];
   documentIds: string[];
-  weekNumbers: number[];
+  weekLabels: string[];
 }
 
 export interface RetrievalFilters {
+  /**
+   * Exact unit labels ("Week 3", "Lecture 3"). Set by the UI, where the user
+   * picked a specific facet. Two subjects can both have a unit 3 without
+   * meaning the same thing, so label is the identity, not the number.
+   */
+  weeks?: string[];
+  /**
+   * Unit numbers parsed out of free text ("revise week 3"). Deliberately looser
+   * than `weeks`: it matches unit 3 under any scheme, because a typed query
+   * carries no information about which scheme the user meant.
+   */
   weekNumbers?: number[];
   concepts?: string[];
   documentIds?: string[];
