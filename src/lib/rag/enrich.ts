@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { describeApiError, getClient, MODEL } from "../llm";
-import { snippet, STOPWORDS, tokenise } from "./text";
+import { snippet, STOPWORDS } from "./text";
 import { compareWeeks, tagFor, UNPLACED } from "./weeks";
 import type { DraftChunk } from "./chunk";
 import type { WeekTag } from "../types";
@@ -123,19 +123,32 @@ async function enrichWithClaude(
  * ("central limit theorem", "confidence intervals") from one-off phrasing, and
  * it is why this produces a handful of usable tags instead of a wall of noise.
  */
+/**
+ * Concept names are read by people, so they are built from the text's own
+ * surface forms — "NP-complete problem", not the retrieval tokenizer's
+ * "npcomplete complete". Frequency is still counted case-insensitively.
+ */
+const SURFACE_WORD = /[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g;
+
 function enrichHeuristically(chunks: DraftChunk[]): Map<number, string[]> {
   const documentBigrams = new Map<string, number>();
   const chunkBigrams = chunks.map((chunk) => {
-    const terms = tokenise(chunk.text);
-    const local = new Map<string, number>();
-    for (let i = 0; i + 1 < terms.length; i++) {
+    const words = chunk.text.match(SURFACE_WORD) ?? [];
+    const local = new Map<string, string>();
+    const counts = new Map<string, number>();
+
+    for (let i = 0; i + 1 < words.length; i++) {
+      const [a, b] = [words[i], words[i + 1]];
       // Both halves must be substantial; "the cost" and "of n" are not concepts.
-      if (terms[i].length < 4 || terms[i + 1].length < 4) continue;
-      const bigram = `${terms[i]} ${terms[i + 1]}`;
-      local.set(bigram, (local.get(bigram) ?? 0) + 1);
-      documentBigrams.set(bigram, (documentBigrams.get(bigram) ?? 0) + 1);
+      if (a.length < 4 || b.length < 4) continue;
+      if (!isConceptWord(a.toLowerCase()) || !isConceptWord(b.toLowerCase())) continue;
+
+      const key = `${a} ${b}`.toLowerCase();
+      if (!local.has(key)) local.set(key, `${a} ${b}`);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      documentBigrams.set(key, (documentBigrams.get(key) ?? 0) + 1);
     }
-    return local;
+    return { surface: local, counts };
   });
 
   return new Map(
@@ -151,12 +164,12 @@ function enrichHeuristically(chunks: DraftChunk[]): Map<number, string[]> {
       }
 
       const covered = concepts.join(" ").toLowerCase();
-      const recurring = [...chunkBigrams[i].entries()]
-        .filter(([bigram]) => (documentBigrams.get(bigram) ?? 0) >= 2)
-        .filter(([bigram]) => !covered.includes(bigram.split(" ")[0]))
+      const recurring = [...chunkBigrams[i].counts.entries()]
+        .filter(([key]) => (documentBigrams.get(key) ?? 0) >= 2)
+        .filter(([key]) => !covered.includes(key.split(" ")[0]))
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .slice(0, concepts.length ? 1 : 2)
-        .map(([bigram]) => titleCase(bigram));
+        .map(([key]) => titleCase(chunkBigrams[i].surface.get(key) ?? key));
 
       concepts.push(...recurring);
       return [chunk.ordinal, concepts];
@@ -164,11 +177,42 @@ function enrichHeuristically(chunks: DraftChunk[]): Map<number, string[]> {
   );
 }
 
+/**
+ * Words that are perfectly good for retrieval but never name a concept. Kept
+ * separate from STOPWORDS, which the embedder and BM25 also read — removing
+ * "number" or "test" there would damage matching on "law of large numbers".
+ */
+const CONCEPT_STOPWORDS = new Set(
+  `nothing else something anything everything thing things true false null given
+   means makes make need needs take takes comes goes gives based way ways case
+   cases point points kind sort part parts time times number numbers test tests
+   result results value values term terms example examples note notes here there
+   this that these those every each same different following above below less
+   least most more many much often always never without within whether rather
+   enough still even just only both either neither`
+    .split(/\s+/)
+    .filter(Boolean),
+);
+
+/** Adverbs and fillers make poor concept names; nouns and adjectives carry them. */
+function isConceptWord(token: string): boolean {
+  // Surface-form bigrams skip the retrieval tokenizer, so both lists apply here.
+  if (STOPWORDS.has(token) || CONCEPT_STOPWORDS.has(token)) return false;
+  // "approximately normal", "sufficiently large" — the adverb is never the topic.
+  if (token.endsWith("ly") && token.length > 5) return false;
+  return true;
+}
+
 function titleCase(value: string): string {
   return value
-    .toLowerCase()
     .split(/\s+/)
-    .map((w, i) => (i > 0 && STOPWORDS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .map((word, i) => {
+      // Acronyms and mixed-case terms keep their own casing: NP, BFS, McNemar.
+      if (/[A-Z]/.test(word.slice(1))) return word;
+      const lower = word.toLowerCase();
+      if (i > 0 && STOPWORDS.has(lower)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
     .join(" ");
 }
 

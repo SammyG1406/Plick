@@ -1,4 +1,4 @@
-import { STOPWORDS } from "../text";
+import { rawWords, tokenise } from "../text";
 import { normalise, type EmbeddingProvider } from "./types";
 
 const DIMENSIONS = 512;
@@ -36,9 +36,9 @@ function add(vector: Float64Array, token: string, salt: number, weight: number):
 
 function embedOne(text: string): number[] {
   const vector = new Float64Array(DIMENSIONS);
-  const lower = text.toLowerCase();
-  const words = lower.match(/[a-z0-9]+/g) ?? [];
-  const content = words.filter((w) => w.length > 2 && !STOPWORDS.has(w));
+  // Same tokenizer as BM25, so both channels agree on what a term is.
+  const content = tokenise(text);
+  const words = rawWords(text);
 
   for (const word of content) {
     add(vector, word, 1, 1);

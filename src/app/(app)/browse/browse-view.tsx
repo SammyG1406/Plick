@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, post } from "@/lib/client";
-import { EmptyState, Panel, Pill, SourceBadge, Spinner, WeekBadge } from "@/components/ui";
+import { EmptyState, Pill, SourceBadge, Spinner, WeekBadge } from "@/components/ui";
 import type { RetrievalFilters, RetrievedChunk } from "@/lib/types";
 
 interface Taxonomy {
@@ -74,30 +74,35 @@ export function BrowseView() {
     [],
   );
 
-  const filters: RetrievalFilters = {
-    weeks: week === null ? undefined : [week],
-    concepts: concepts.length ? concepts : undefined,
-  };
+  const asFilters = (nextWeek: string | null, nextConcepts: string[]): RetrievalFilters => ({
+    weeks: nextWeek === null ? undefined : [nextWeek],
+    concepts: nextConcepts.length ? nextConcepts : undefined,
+  });
 
-  // Selecting a facet re-runs immediately; typing waits for submit.
-  useEffect(() => {
-    void run(query, {
-      weeks: week === null ? undefined : [week],
-      concepts: concepts.length ? concepts : undefined,
-    });
-    // `query` is intentionally excluded — see the submit handler.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [week, concepts, run]);
+  // Facets retrieve on click rather than through an effect watching state, so
+  // there is one render per interaction instead of a state-change cascade.
+  function selectWeek(label: string | null) {
+    const next = label === week ? null : label;
+    setWeek(next);
+    void run(query, asFilters(next, concepts));
+  }
 
   function toggleConcept(name: string) {
-    setConcepts((current) =>
-      current.includes(name) ? current.filter((c) => c !== name) : [...current, name],
-    );
+    const next = concepts.includes(name)
+      ? concepts.filter((c) => c !== name)
+      : [...concepts, name];
+    setConcepts(next);
+    void run(query, asFilters(week, next));
+  }
+
+  function clearConcepts() {
+    setConcepts([]);
+    void run(query, asFilters(week, []));
   }
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    void run(query, filters);
+    void run(query, asFilters(week, concepts));
   }
 
   if (!taxonomy) {
@@ -156,14 +161,14 @@ export function BrowseView() {
           <div>
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Units</h2>
             <div className="mt-2.5 flex flex-wrap gap-1.5 lg:flex-col lg:items-start">
-              <Pill active={week === null} onClick={() => setWeek(null)}>
+              <Pill active={week === null} onClick={() => selectWeek(null)}>
                 All ({taxonomy.chunkCount})
               </Pill>
               {taxonomy.weeks.map((entry) => (
                 <Pill
                   key={entry.label}
                   active={week === entry.label}
-                  onClick={() => setWeek(entry.label === week ? null : entry.label)}
+                  onClick={() => selectWeek(entry.label)}
                   title={`${entry.documentCount} document${entry.documentCount === 1 ? "" : "s"}`}
                 >
                   {entry.label} ({entry.chunkCount})
@@ -195,7 +200,7 @@ export function BrowseView() {
             </div>
             {concepts.length > 0 && (
               <button
-                onClick={() => setConcepts([])}
+                onClick={clearConcepts}
                 className="mt-3 text-xs text-muted underline underline-offset-4 hover:text-foreground"
               >
                 Clear concept filters

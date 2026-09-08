@@ -13,10 +13,35 @@ export const STOPWORDS = new Set(
     .filter(Boolean),
 );
 
+/** Words including hyphenated and possessive compounds: "p-value", "Bayes'". */
+const WORD = /[a-z0-9]+(?:['’-][a-z0-9]+)*/g;
+
+export function rawWords(text: string): string[] {
+  return text.toLowerCase().match(WORD) ?? [];
+}
+
+/**
+ * Compounds are emitted both joined and split. Splitting alone loses the part
+ * that carries the meaning — "p-value" reduces to "value", which then matches
+ * any passage about values — while joining alone would stop "depth first
+ * search" from matching "depth-first search". Emitting both fixes the first
+ * without breaking the second, and IDF does the rest: "pvalue" is rare, so it
+ * dominates the score wherever it genuinely occurs.
+ */
 export function tokenise(text: string): string[] {
-  return (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter(
-    (t) => t.length > 2 && !STOPWORDS.has(t),
-  );
+  const out: string[] = [];
+  for (const word of rawWords(text)) {
+    if (/['’-]/.test(word)) {
+      const joined = word.replace(/['’-]/g, "");
+      if (joined.length > 2) out.push(joined);
+      for (const part of word.split(/['’-]/)) {
+        if (part.length > 2 && !STOPWORDS.has(part)) out.push(part);
+      }
+    } else if (word.length > 2 && !STOPWORDS.has(word)) {
+      out.push(word);
+    }
+  }
+  return out;
 }
 
 /** ~4 chars per token is close enough for chunk sizing; we never bill on it. */

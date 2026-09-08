@@ -55,9 +55,14 @@ export function LibraryView() {
     }
   }, []);
 
+  // Initial load only; every later refresh is triggered by an explicit action.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    api<SourcesResponse>("/api/sources")
+      .then(setData)
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : "Could not load your library."),
+      );
+  }, []);
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;

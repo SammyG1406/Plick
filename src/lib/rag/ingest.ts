@@ -185,6 +185,12 @@ export async function buildTaxonomy(ownerId: string) {
     { label: string; number: number | null; chunkCount: number; documentIds: Set<string>; concepts: Set<string> }
   >();
 
+  // The concept index has already merged spelling variants ("Bellman-Ford" and
+  // "Bellman Ford"), so the week facet must show those canonical names too —
+  // otherwise the same concept appears twice under one unit.
+  const canonical = new Map<string, string>();
+  for (const record of concepts) canonical.set(normaliseConcept(record.name), record.name);
+
   for (const chunk of chunks) {
     // Keyed by label, not number: "Week 3" and "Lecture 3" come from different
     // subjects and must not collapse into one facet.
@@ -198,7 +204,9 @@ export async function buildTaxonomy(ownerId: string) {
     };
     entry.chunkCount += 1;
     entry.documentIds.add(chunk.documentId);
-    for (const c of chunk.concepts) entry.concepts.add(c);
+    for (const c of chunk.concepts) {
+      entry.concepts.add(canonical.get(normaliseConcept(c)) ?? c);
+    }
     weekMap.set(key, entry);
   }
 
